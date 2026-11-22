@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import crypto from 'crypto';
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
@@ -13,9 +11,11 @@ export async function POST(req) {
   if (file.size > 2 * 1024 * 1024) return err('Ukuran file maksimal 2 MB.');
   const [[j]] = await db.query('SELECT * FROM jenis_arisan WHERE id=?', [fd.get('jenis_id')]);
   if (!j) return err('Pilih jenis arisan.');
-  const name = crypto.randomUUID() + '.' + ext, dir = path.join(process.cwd(), 'uploads');
-  await mkdir(dir, { recursive: true });
-  await writeFile(path.join(dir, name), Buffer.from(await file.arrayBuffer()));
+  const name = crypto.randomUUID() + '.' + ext;
+await db.query(
+  'INSERT INTO bukti_file (nama_file, mime, data) VALUES (?,?,?)',
+  [name, file.type, Buffer.from(await file.arrayBuffer())]
+);
   await db.query("INSERT INTO pembayaran (anggota_id,jenis_id,nominal,tanggal,status,bukti) VALUES (?,?,?,CURDATE(),'Menunggu',?)", [s.anggota_id, j.id, j.nominal, name]);
   return NextResponse.json({ ok: true });
 }
