@@ -29,9 +29,8 @@ export default async function Dashboard({ searchParams }) {
     : j ? `${aktif[0].menerima} dari ${aktif[0].peserta} peserta sudah menerima`
     : `${aktif.filter((h) => h.menerima >= h.peserta).length} dari ${aktif.length} arisan selesai`;
 
-  // BARU: jadwal arisan, arisan sebelumnya, dan anggota yang belum bayar
+  // BARU: jadwal arisan, arisan sebelumnya, anggota yang belum bayar, pemenang terakhir
   const today = hariIni();
-  const ym = /^\d{4}-\d{2}$/.test(searchParams?.bulan || '') ? searchParams.bulan : today.slice(0, 7);
   let jj = [];
   try {
     [jj] = await db.query(`SELECT id, nama, periode, tanggal_mulai FROM jenis_arisan ${j ? 'WHERE id=?' : ''} ORDER BY id`, j ? [j] : []);
@@ -47,22 +46,18 @@ export default async function Dashboard({ searchParams }) {
          SELECT 1 FROM pembayaran p WHERE p.anggota_id=aj.anggota_id AND p.jenis_id=aj.jenis_id
          AND p.status='Lunas' AND p.tanggal>=? AND p.tanggal<?) ORDER BY a.nama`,
       [x.id, sebelumnya || '1970-01-01', berikutnya]);
+    let pemenang = null;
+    try {
+      const [[w]] = await db.query('SELECT a.nama FROM pengundian u JOIN anggota a ON a.id=u.anggota_id WHERE u.jenis_id=? ORDER BY u.id DESC LIMIT 1', [x.id]);
+      pemenang = w?.nama || null;
+    } catch { pemenang = null; }
     jadwal.push({
-      id: x.id, nama: x.nama, periode: x.periode, mulai, sebelumnya, berikutnya,
+      id: x.id, nama: x.nama, periode: x.periode, mulai, sebelumnya, berikutnya, pemenang,
       belum: belum.map((b) => b.nama),
       sisa: Math.round((parse(berikutnya) - parse(today)) / 86400000),
     });
   }
   jadwal.sort((p, q) => p.berikutnya.localeCompare(q.berikutnya));
-
-  // BARU: pemenang undian terakhir pada arisan terdekat
-  let pemenang = null;
-  if (jadwal[0]) {
-    try {
-      const [[w]] = await db.query('SELECT a.nama FROM pengundian u JOIN anggota a ON a.id=u.anggota_id WHERE u.jenis_id=? ORDER BY u.id DESC LIMIT 1', [jadwal[0].id]);
-      pemenang = w?.nama || null;
-    } catch { pemenang = null; }
-  }
 
   const stat = [
     ['Jumlah Anggota', a.n, null, 'bg-[#e6cfae]'],
@@ -85,8 +80,8 @@ export default async function Dashboard({ searchParams }) {
         ))}
       </div>
 
-      {/* BARU: banner arisan berikutnya (klik untuk kalender digital) */}
-      <JadwalBanner jadwal={jadwal} ym={ym} jenis={j} pemenang={pemenang} bukaAwal={!!searchParams?.bulan} />
+      {/* BARU: banner arisan berikutnya + kalender popup */}
+      <JadwalBanner jadwal={jadwal} ym={today.slice(0, 7)} />
 
       <h2 className="mb-2 mt-6 font-semibold">Pembayaran Terbaru</h2>
       <Tabel rows={rows} />
