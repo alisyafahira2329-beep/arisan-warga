@@ -2,8 +2,8 @@ import { db } from '@/lib/db';
 import { rp } from '@/lib/fmt';
 import Badge from '@/components/Badge';
 import JenisSelect from '@/components/JenisSelect';
-import Kalender from '@/components/Kalender'; // BARU
-import { s10, hariIni, jadwalTerdekat, tglPanjang, parse } from '@/lib/jadwal'; // BARU
+import JadwalBanner from '@/components/JadwalBanner'; // BARU
+import { s10, hariIni, jadwalTerdekat, parse } from '@/lib/jadwal'; // BARU
 export const dynamic = 'force-dynamic';
 export default async function Dashboard({ searchParams }) {
   const j = searchParams?.jenis || '';
@@ -55,6 +55,15 @@ export default async function Dashboard({ searchParams }) {
   }
   jadwal.sort((p, q) => p.berikutnya.localeCompare(q.berikutnya));
 
+  // BARU: pemenang undian terakhir pada arisan terdekat
+  let pemenang = null;
+  if (jadwal[0]) {
+    try {
+      const [[w]] = await db.query('SELECT a.nama FROM pengundian u JOIN anggota a ON a.id=u.anggota_id WHERE u.jenis_id=? ORDER BY u.id DESC LIMIT 1', [jadwal[0].id]);
+      pemenang = w?.nama || null;
+    } catch { pemenang = null; }
+  }
+
   const stat = [
     ['Jumlah Anggota', a.n, null, 'bg-[#e6cfae]'],
     ['Total Iuran', rp(t.n), null, 'bg-[#dcbb98]'],
@@ -76,27 +85,8 @@ export default async function Dashboard({ searchParams }) {
         ))}
       </div>
 
-      {/* BARU: Arisan berikutnya + kalender */}
-      <div className="mt-6 grid gap-3 lg:grid-cols-3">
-        <div className="rounded-xl bg-white p-4 shadow-sm lg:col-span-2">
-          <h2 className="mb-3 font-semibold">Arisan Berikutnya</h2>
-          {!jadwal.length && (
-            <p className="text-sm text-slate-500">Jadwal belum diatur. Isi kolom periode (bulanan/mingguan) dan tanggal_mulai pada jenis arisan.</p>
-          )}
-          {jadwal.map((x) => (
-            <div key={x.id} className="mb-3 rounded-lg bg-[#e6cfae]/40 p-3 last:mb-0">
-              <p className="text-sm font-semibold">
-                {x.nama} <span className="text-xs font-normal text-[#2b1a26]/70">({x.periode === 'bulanan' ? 'Per bulan' : 'Per minggu'})</span>
-              </p>
-              <p className="text-sm">Berikutnya: <b>{tglPanjang(x.berikutnya)}</b> <span className="text-xs">({x.sisa} hari lagi)</span></p>
-              <p className="text-sm">Sebelumnya: {x.sebelumnya ? tglPanjang(x.sebelumnya) : 'Belum ada'}</p>
-              <p className="mt-2 text-xs font-semibold">Belum bayar iuran periode ini ({x.belum.length}):</p>
-              <p className="text-xs">{x.belum.length ? x.belum.join(', ') : 'Semua sudah lunas'}</p>
-            </div>
-          ))}
-        </div>
-        <Kalender ym={ym} jadwal={jadwal} jenis={j} />
-      </div>
+      {/* BARU: banner arisan berikutnya (klik untuk kalender digital) */}
+      <JadwalBanner jadwal={jadwal} ym={ym} jenis={j} pemenang={pemenang} bukaAwal={!!searchParams?.bulan} />
 
       <h2 className="mb-2 mt-6 font-semibold">Pembayaran Terbaru</h2>
       <Tabel rows={rows} />
