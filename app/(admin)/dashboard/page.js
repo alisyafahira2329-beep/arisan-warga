@@ -29,17 +29,18 @@ export default async function Dashboard({ searchParams }) {
     : j ? `${aktif[0].menerima} dari ${aktif[0].peserta} peserta sudah menerima`
     : `${aktif.filter((h) => h.menerima >= h.peserta).length} dari ${aktif.length} arisan selesai`;
 
-  // BARU: jadwal arisan, arisan sebelumnya, anggota yang belum bayar, pemenang terakhir
+  // BARU: jadwal arisan memakai kolom frekuensi (bulanan/mingguan) + tanggal_mulai.
+  // Kolom periode tidak disentuh (isinya masa berjalan arisan).
   const today = hariIni();
   let jj = [];
   try {
-    [jj] = await db.query(`SELECT id, nama, periode, tanggal_mulai FROM jenis_arisan ${j ? 'WHERE id=?' : ''} ORDER BY id`, j ? [j] : []);
+    [jj] = await db.query(`SELECT id, nama, frekuensi, tanggal_mulai FROM jenis_arisan ${j ? 'WHERE id=?' : ''} ORDER BY id`, j ? [j] : []);
   } catch { jj = []; }
   const jadwal = [];
   for (const x of jj) {
     const mulai = s10(x.tanggal_mulai);
-        const p = String(x.periode || '').toLowerCase();
-    const per = p.includes('minggu') ? 'mingguan' : p.includes('bulan') ? 'bulanan' : null;
+    const f = String(x.frekuensi || '').toLowerCase();
+    const per = f.includes('minggu') ? 'mingguan' : f.includes('bulan') ? 'bulanan' : null;
     if (!mulai || !per) continue;
     const { sebelumnya, berikutnya } = jadwalTerdekat(mulai, per, today);
     const [belum] = await db.query(
@@ -54,7 +55,7 @@ export default async function Dashboard({ searchParams }) {
       pemenang = w?.nama || null;
     } catch { pemenang = null; }
     jadwal.push({
-      id: x.id, nama: x.nama, periode: x.periode, mulai, sebelumnya, berikutnya, pemenang,
+      id: x.id, nama: x.nama, periode: per, mulai, sebelumnya, berikutnya, pemenang,
       belum: belum.map((b) => b.nama),
       sisa: Math.round((parse(berikutnya) - parse(today)) / 86400000),
     });
