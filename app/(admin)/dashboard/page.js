@@ -38,8 +38,10 @@ export default async function Dashboard({ searchParams }) {
   const jadwal = [];
   for (const x of jj) {
     const mulai = s10(x.tanggal_mulai);
-    if (!mulai || !['bulanan', 'mingguan'].includes(x.periode)) continue;
-    const { sebelumnya, berikutnya } = jadwalTerdekat(mulai, x.periode, today);
+        const p = String(x.periode || '').toLowerCase();
+    const per = p.includes('minggu') ? 'mingguan' : p.includes('bulan') ? 'bulanan' : null;
+    if (!mulai || !per) continue;
+    const { sebelumnya, berikutnya } = jadwalTerdekat(mulai, per, today);
     const [belum] = await db.query(
       `SELECT a.nama FROM anggota_jenis aj JOIN anggota a ON a.id=aj.anggota_id
        WHERE aj.jenis_id=? AND NOT EXISTS (
