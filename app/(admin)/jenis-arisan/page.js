@@ -9,7 +9,7 @@ export default function Page() {
       { key: 'frekuensi', label: 'Jenis Periode', type: 'cards', def: 'bulanan',
         cards: [{ value: 'bulanan', label: 'Bulanan', sub: 'Setiap 1 bulan' }, { value: 'mingguan', label: 'Mingguan', sub: 'Setiap 7 hari' }] },
       { key: 'tanggal_mulai', label: 'Tanggal Mulai', type: 'date', half: true },
-      { key: 'tanggal_selesai', label: 'Tanggal Selesai (Opsional)', type: 'date', half: true, optional: true },
+      { key: 'tanggal_selesai', label: 'Tanggal Selesai (Opsional)', short: 'Tanggal Selesai', type: 'date', half: true, optional: true },
       { key: 'periode', label: 'Periode', view: true },
     ]} />;
 }
