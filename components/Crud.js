@@ -52,14 +52,25 @@ export default function Crud({ title, desc, res, cols, addLabel, filterJenis, fo
       )}
       <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
         <table className="w-full">
-          <thead><tr><th className="th">No</th>{cols.filter((c) => !c.hide).map((c) => <th key={c.key} className="th">{c.short || c.label}</th>)}
+          <thead>
+            <tr>
+              <th className="th">No</th>
+              {cols.filter((c) => !c.hide).map((c) => <th key={c.key} className="th">{c.short || c.label}</th>)}
+              <th className="th">Aksi</th>
+            </tr>
+          </thead>
           <tbody>
             {shown.map((r, i) => (
-              <tr key={r.id}><td className="td">{i + 1}</td>{cols.filter((c) => !c.hide).map((c) => <td key={c.key} className="td">{cell(r, c)}</td>)}
-                <td className="td space-x-1 whitespace-nowrap">
-                  <button className="rounded bg-blue-500 px-2 py-1 text-xs text-white" onClick={() => setF({ ...r })}>Edit</button>
-                  <button className="rounded bg-red-400 px-2 py-1 text-xs text-white" onClick={() => del(r.id)}>Hapus</button>
-                </td></tr>
+              <tr key={r.id}>
+                <td className="td">{i + 1}</td>
+                {cols.filter((c) => !c.hide).map((c) => <td key={c.key} className="td">{cell(r, c)}</td>)}
+                <td className="td">
+                  <div className="flex gap-1 whitespace-nowrap">
+                    <button className="rounded bg-blue-500 px-2 py-1 text-xs text-white" onClick={() => setF({ ...r })}>Edit</button>
+                    <button className="rounded bg-red-400 px-2 py-1 text-xs text-white" onClick={() => del(r.id)}>Hapus</button>
+                  </div>
+                </td>
+              </tr>
             ))}
             {!shown.length && <tr><td className="td text-slate-500" colSpan={cols.length + 2}>{jf ? 'Belum ada data untuk jenis arisan ini.' : <>Belum ada data. Klik “{addLabel}” untuk mulai.</>}</td></tr>}
           </tbody>
