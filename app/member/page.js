@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import JenisSelect from '@/components/JenisSelect';
+import JadwalBanner from '@/components/JadwalBanner'; // BARU
+import { ambilJadwal } from '@/lib/ambilJadwal'; // BARU
+import { hariIni } from '@/lib/jadwal'; // BARU
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
 export const dynamic = 'force-dynamic';
@@ -21,6 +24,8 @@ function labelPeriode(periode) {
   if (p.includes('tahun')) return `tahun ${n.getFullYear()}`;
   return 'periode berjalan';
 }
+// BARU: frekuensi (Bulanan/Mingguan dari formulir Jenis Arisan) diutamakan, periode lama jadi cadangan
+const frek = (x) => x?.frekuensi || x?.periode;
 // Status pembayaran anggota untuk satu jenis arisan pada periode berjalan (Lunas diprioritaskan)
 async function statusJenis(anggotaId, jenisId, periode) {
   const start = awalPeriode(periode);
@@ -32,8 +37,9 @@ async function statusJenis(anggotaId, jenisId, periode) {
 
 export default async function MemberDashboard({ searchParams }) {
   const s = await getSession(); const j = searchParams.jenis || '';
-  let [jenis] = await db.query('SELECT j.id, j.nama, j.periode FROM jenis_arisan j JOIN anggota_jenis aj ON aj.jenis_id=j.id WHERE aj.anggota_id=? ORDER BY j.id', [s.anggota_id]);
-  if (!jenis.length) [jenis] = await db.query('SELECT id, nama, periode FROM jenis_arisan ORDER BY id');
+  let [jenis] = await db.query('SELECT j.id, j.nama, j.periode, j.frekuensi FROM jenis_arisan j JOIN anggota_jenis aj ON aj.jenis_id=j.id WHERE aj.anggota_id=? ORDER BY j.id', [s.anggota_id]);
+  const ikut = jenis.length > 0; // BARU: apakah anggota terdaftar di jenis arisan tertentu
+  if (!jenis.length) [jenis] = await db.query('SELECT id, nama, periode, frekuensi FROM jenis_arisan ORDER BY id');
   const [[a]] = await db.query('SELECT nama FROM anggota WHERE id=?', [s.anggota_id]);
   const [pen] = await db.query(`SELECT a.nama FROM pengundian u JOIN anggota a ON a.id=u.anggota_id ${j ? 'WHERE u.jenis_id=?' : ''} ORDER BY u.id DESC LIMIT 1`, j ? [j] : []);
 
@@ -41,12 +47,12 @@ export default async function MemberDashboard({ searchParams }) {
   let status, subStatus;
   if (j) {
     const item = jenis.find((x) => String(x.id) === String(j));
-    const st = await statusJenis(s.anggota_id, j, item?.periode);
+    const st = await statusJenis(s.anggota_id, j, frek(item));
     status = st === 'Lunas' ? 'Lunas' : st === 'Menunggu' ? 'Menunggu verifikasi' : st === 'Belum Lunas' ? 'Belum Lunas' : 'Belum bayar';
-    subStatus = `Periode ${item?.periode || '-'} · ${labelPeriode(item?.periode)}`;
+    subStatus = `Periode ${frek(item) || '-'} · ${labelPeriode(frek(item))}`;
   } else {
     let lunas = 0;
-    for (const x of jenis) if ((await statusJenis(s.anggota_id, x.id, x.periode)) === 'Lunas') lunas++;
+    for (const x of jenis) if ((await statusJenis(s.anggota_id, x.id, frek(x))) === 'Lunas') lunas++;
     status = jenis.length ? `${lunas} dari ${jenis.length} arisan lunas` : 'Belum ada arisan';
     subStatus = 'Periode berjalan tiap arisan';
   }
@@ -63,6 +69,9 @@ export default async function MemberDashboard({ searchParams }) {
   }
   const selesai = selesaiList.length > 0 && selesaiList.every(Boolean);
   const info = j ? `${menerima} dari ${peserta} peserta sudah menerima` : `${selesaiList.filter(Boolean).length} dari ${selesaiList.length} arisan selesai`;
+
+  // BARU: jadwal arisan berikutnya (tanpa daftar nama yang belum bayar)
+  const jadwal = await ambilJadwal({ jenisId: j, anggotaId: ikut ? s.anggota_id : '', denganBelum: false });
 
   const quick = [['/member/riwayat', '🕘', 'Lihat Riwayat'], ['/member/profil', '✏️', 'Edit Profil'], ['/member/upload', '⬆️', 'Upload Bukti Bayar']];
   return (
@@ -83,6 +92,10 @@ export default async function MemberDashboard({ searchParams }) {
           <p className="mt-1 text-xs text-[#2b1a26]/70">{info}</p>
         </div>
       </div>
+
+      {/* BARU: banner arisan berikutnya + kalender popup (sama seperti admin) */}
+      <JadwalBanner jadwal={jadwal} ym={hariIni().slice(0, 7)} tampilBelum={false} linkDetail="/member/riwayat" />
+
       <h2 className="mb-2 mt-6 font-semibold">Akses Cepat</h2>
       <div className="grid gap-3 sm:grid-cols-3">
         {quick.map(([h, i, l]) => <Link key={h} href={h} className="rounded-xl bg-white p-4 text-center text-sm font-medium shadow-sm hover:bg-[#efe3d0]"><div className="text-2xl">{i}</div>{l}</Link>)}

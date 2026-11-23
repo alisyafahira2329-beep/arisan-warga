@@ -16,7 +16,9 @@ const geser = (ym, k) => {
   return fmt(new Date(Date.UTC(y, m - 1 + k, 1))).slice(0, 7);
 };
 
-export default function JadwalBanner({ jadwal, ym }) {
+// tampilBelum : tampilkan daftar yang belum bayar (admin = true, anggota = false)
+// linkDetail  : tujuan tombol "Lihat Detail Arisan" (kosongkan untuk menyembunyikan)
+export default function JadwalBanner({ jadwal, ym, tampilBelum = true, linkDetail = '/jenis-arisan' }) {
   const today = hariIni();
   const u = jadwal[0]; // arisan terdekat
   const [buka, setBuka] = useState(false);
@@ -113,7 +115,7 @@ export default function JadwalBanner({ jadwal, ym }) {
                         <p className="text-xs text-[#2b1a26]/70">Pemenang Terakhir</p>
                         <p className="inline-block rounded-full bg-[#e6cfae] px-3 py-0.5 text-sm font-semibold">{x.pemenang || 'Belum Diundi'}</p>
                       </div>
-                      {x.berikutnya === dipilih && (
+                      {tampilBelum && x.berikutnya === dipilih && (
                         <div>
                           <p className="text-xs text-[#2b1a26]/70">Belum bayar ({x.belum.length})</p>
                           <p className="text-xs">{x.belum.length ? x.belum.join(', ') : 'Semua sudah lunas'}</p>
@@ -129,7 +131,7 @@ export default function JadwalBanner({ jadwal, ym }) {
                   {u && !adalahBerikutnya && kejadian.length > 0 && (
                     <button type="button" onClick={() => pilih(u.berikutnya)} className="text-xs underline">Kembali ke arisan berikutnya</button>
                   )}
-                  <a href="/jenis-arisan" className="block rounded-lg bg-[#2b1a26] px-4 py-2 text-center text-xs font-semibold text-white">Lihat Detail Arisan →</a>
+                  {linkDetail && <a href={linkDetail} className="block rounded-lg bg-[#2b1a26] px-4 py-2 text-center text-xs font-semibold text-white">Lihat Detail Arisan →</a>}
                 </div>
               </div>
             </div>
